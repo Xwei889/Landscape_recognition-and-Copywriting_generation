@@ -1,0 +1,22 @@
+# 忽略模型文件
+*.pth
+*.pt
+*.h5
+*.bin
+*.onnx
+model/
+project/model/
+
+# 忽略其他大文件/缓存
+*.zip
+*.rar
+*.csv
+*.jpg
+*.png
+venv/
+env/
+__pycache__/
+.idea/
+.vscode/
+*.docx
+*.doc

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>风景场景识别与文案生成系统</title>
+    <style>
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 0 20px;
+        }
+        .container {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .upload-area {
+            margin: 20px 0;
+        }
+        select, button, input[type="file"] {
+            padding: 10px;
+            margin: 10px 0;
+            width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 5px;
+        }
+        .preview-img {
+            max-width: 100%;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌄 识景文案秒出机</h1>
+        <form id="uploadForm">
+            <div class="upload-area">
+                <label>选择风景图片：</label>
+                <input type="file" id="imageFile" accept="image/*" required>
+                <img id="preview" class="preview-img" style="display: none;">
+            </div>
+            <div class="upload-area">
+                <label>选择文案风格：</label>
+                <select id="styleSelect">
+                    <option value="治愈">治愈</option>
+                    <option value="文艺">文艺</option>
+                    <option value="伤感">伤感</option>
+                </select>
+            </div>
+            <button type="submit" id="submitBtn">上传并生成文案</button>
+        </form>
+
+        <div class="result" id="result" style="display: none;">
+            <h3>识别结果：</h3>
+            <p><strong>场景：</strong><span id="sceneResult"></span></p>
+            <p><strong>文案：</strong><span id="captionResult"></span></p>
+        </div>
+    </div>
+
+    <script>
+        // ==========================
+        // 核心修复：把图片存在内存！
+        // ==========================
+        let currentImageBlob = null; // 永久缓存图片
+        let currentFileName = "test.jpg";
+
+        // 选择图片 → 缓存到内存
+        document.getElementById('imageFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            currentFileName = file.name;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                // 转成 blob 永久保存
+                fetch(evt.target.result)
+                    .then(res => res.blob())
+                    .then(blob => {
+                        currentImageBlob = blob;
+                        document.getElementById('preview').src = evt.target.result;
+                        document.getElementById('preview').style.display = 'block';
+                    });
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // 提交 → 永远用缓存的图片，永不空流
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (!currentImageBlob) {
+                alert("请先选择图片！");
+                return;
+            }
+
+            const style = document.getElementById('styleSelect').value;
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+
+            try {
+                const formData = new FormData();
+                // ✅ 永远用缓存的图片，不是浏览器流！
+                formData.append('file', currentImageBlob, currentFileName);
+                formData.append('style', style);
+
+                const res = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+
+                document.getElementById('sceneResult').textContent = data.scene;
+                document.getElementById('captionResult').textContent = data.caption;
+                document.getElementById('result').style.display = 'block';
+            } catch (err) {
+                alert("错误：" + err.message);
+            } finally {
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
