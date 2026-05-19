@@ -3,145 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>风景场景识别与文案生成系统</title>
-    <style>
-        body {
-            font-family: "Microsoft YaHei", sans-serif;
-            max-width: 800px;
-            margin: 50px auto;
-            padding: 0 20px;
-        }
-        .container {
-            background: #f8f9fa;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #333;
-            text-align: center;
-        }
-        .upload-area {
-            margin: 20px 0;
-        }
-        select, button, input[type="file"] {
-            padding: 10px;
-            margin: 10px 0;
-            width: 100%;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 16px;
-        }
-        button {
-            background: #007bff;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        button:disabled {
-            background: #6c757d;
-            cursor: not-allowed;
-        }
-        .result {
-            margin-top: 30px;
-            padding: 20px;
-            background: white;
-            border-radius: 5px;
-        }
-        .preview-img {
-            max-width: 100%;
-            margin: 10px 0;
-            border-radius: 5px;
-        }
-    </style>
+    <title>识景秒出文案机</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>🌄 识景文案秒出机</h1>
-        <form id="uploadForm">
-            <div class="upload-area">
-                <label>选择风景图片：</label>
-                <input type="file" id="imageFile" accept="image/*" required>
-                <img id="preview" class="preview-img" style="display: none;">
-            </div>
-            <div class="upload-area">
-                <label>选择文案风格：</label>
-                <select id="styleSelect">
-                    <option value="治愈">治愈</option>
-                    <option value="文艺">文艺</option>
-                    <option value="伤感">伤感</option>
-                </select>
-            </div>
-            <button type="submit" id="submitBtn">上传并生成文案</button>
-        </form>
-
-        <div class="result" id="result" style="display: none;">
-            <h3>识别结果：</h3>
-            <p><strong>场景：</strong><span id="sceneResult"></span></p>
-            <p><strong>文案：</strong><span id="captionResult"></span></p>
+<div id="app">
+    <div class="top-nav">
+        <div class="nav-logo">
+            <span>🌄</span>
+            风景场景识别与文案生成系统
+        </div>
+        <div class="nav-menu">
+            <div class="nav-item" :class="{active:activeTab==='home'}" @click="activeTab='home'">首页</div>
+            <div class="nav-item" :class="{active:activeTab==='author'}" @click="activeTab='author'">作者介绍</div>
+            <div class="nav-item" :class="{active:activeTab==='about'}" @click="activeTab='about'">系统说明</div>
         </div>
     </div>
 
-    <script>
-        // ==========================
-        // 核心修复：把图片存在内存！
-        // ==========================
-        let currentImageBlob = null; // 永久缓存图片
-        let currentFileName = "test.jpg";
+    <main class="main-content">
+        <div class="content-card">
+            <!-- 首页：左右两栏布局 -->
+            <div v-if="activeTab==='home'">
+                <h1 class="page-title">风景场景识别与文案生成</h1>
 
-        // 选择图片 → 缓存到内存
-        document.getElementById('imageFile').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
+                <div class="two-column">
+                    <!-- 左侧：上传区域 -->
+                    <div class="col">
+                        <div class="upload-section">
+                            <label class="form-label">选择风景图片</label>
+                            <input type="file" accept="image/*" @change="handleFileChange" class="file-input" />
+                            <img v-if="previewUrl" :src="previewUrl" class="image-preview" alt="预览">
+                        </div>
 
-            currentFileName = file.name;
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-                // 转成 blob 永久保存
-                fetch(evt.target.result)
-                    .then(res => res.blob())
-                    .then(blob => {
-                        currentImageBlob = blob;
-                        document.getElementById('preview').src = evt.target.result;
-                        document.getElementById('preview').style.display = 'block';
-                    });
-            };
-            reader.readAsDataURL(file);
-        });
+                        <div class="upload-section">
+                            <label class="form-label">选择文案风格</label>
+                            <select v-model="selectedStyle" class="form-select">
+                                <option value="治愈">治愈</option>
+                                <option value="文艺">文艺</option>
+                                <option value="伤感">伤感</option>
+                            </select>
+                        </div>
 
-        // 提交 → 永远用缓存的图片，永不空流
-        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            if (!currentImageBlob) {
-                alert("请先选择图片！");
-                return;
-            }
+                        <button @click="generateCaption" :disabled="loading||!imageBlob" class="submit-btn">
+                            <span v-text="loading?'⏳ 正在识别生成中...':'🚀 上传并生成文案'"></span>
+                        </button>
+                    </div>
 
-            const style = document.getElementById('styleSelect').value;
-            const btn = document.getElementById('submitBtn');
-            btn.disabled = true;
+                    <!-- 右侧：结果区域 -->
+                    <div class="col">
+                        <div v-if="result.scene" class="result-card">
+                            <h3 class="result-title">✅ 识别结果</h3>
+                            <div class="result-item">
+                                <strong>识别场景：</strong> <span v-text="result.scene"></span>
+                            </div>
+                            <div class="result-item">
+                                <strong>生成文案：</strong> <span v-text="result.caption"></span>
+                            </div>
+                        </div>
 
-            try {
-                const formData = new FormData();
-                // ✅ 永远用缓存的图片，不是浏览器流！
-                formData.append('file', currentImageBlob, currentFileName);
-                formData.append('style', style);
+                        <div v-else class="empty-box">
+                            <div>📷 上传图片并生成文案</div>
+                            <div>结果将在这里显示</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                const res = await fetch('/predict', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await res.json();
+            <!-- 作者介绍 -->
+            <div v-if="activeTab==='author'">
+                <h1 class="page-title">作者介绍</h1>
+                <div class="author-card">
+                    <div class="author-avatar">👨‍🎓</div>
+                    <div class="author-info">
+                        <h2>徐佳伟</h2>
+                        <p>闽江学院 人工智能专业</p>
+                        <p>毕业设计：多模态风景识别文案生成系统</p>
+                    </div>
+                </div>
+            </div>
 
-                document.getElementById('sceneResult').textContent = data.scene;
-                document.getElementById('captionResult').textContent = data.caption;
-                document.getElementById('result').style.display = 'block';
-            } catch (err) {
-                alert("错误：" + err.message);
-            } finally {
-                btn.disabled = false;
-            }
-        });
-    </script>
+            <!-- 系统说明 -->
+            <div v-if="activeTab==='about'">
+                <h1 class="page-title">系统功能说明</h1>
+                <div class="info-section">
+                    <h3>核心功能</h3>
+                    <ul>
+                        <li>本地图片上传预览</li>
+                        <li>智能风景场景分类识别</li>
+                        <li>多风格文案一键生成</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script src="/static/js/app.js"></script>
 </body>
 </html>
