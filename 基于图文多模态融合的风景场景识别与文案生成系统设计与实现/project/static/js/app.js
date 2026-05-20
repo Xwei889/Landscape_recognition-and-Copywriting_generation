@@ -3,77 +3,86 @@ const { createApp } = Vue;
 createApp({
     data() {
         return {
-            activeTab: 'home', // 当前激活的标签页
-            imageBlob: null,   // 缓存的图片 Blob
-            previewUrl: '',    // 图片预览地址
-            selectedStyle: '治愈', // 选中的文案风格
-            loading: false,    // 加载状态
-            result: {          // 识别结果
-                scene: '',
-                caption: ''
-            }
+            activeTab: 'home',
+            imageBlob: null,
+            previewUrl: '',
+            selectedStyle: '治愈',
+            loading: false,
+            result: { scene: '', caption: '', imgPath: '' },
+            copyBtnText: '复制文案',
+            historyList: []
         };
     },
+    delimiters: ['[[', ']]'],
+    mounted() {
+        this.loadHistoryFromLocal();
+    },
     methods: {
-        // 处理文件选择
         handleFileChange(e) {
             const file = e.target.files[0];
             if (!file) return;
-
-            // 释放之前的预览 URL，防止内存泄漏
-            if (this.previewUrl) {
-                URL.revokeObjectURL(this.previewUrl);
-            }
-
             this.previewUrl = URL.createObjectURL(file);
-
-            // 缓存图片为 Blob，解决同图换风格报错问题
-            fetch(this.previewUrl)
-                .then(res => res.blob())
-                .then(blob => {
-                    this.imageBlob = blob;
-                    // 切换图片后清空之前的结果
-                    this.result = { scene: '', caption: '' };
-                });
+            this.imageBlob = file;
+            this.result = { scene: '', caption: '', imgPath: '' };
         },
 
-        // 提交生成文案
         async generateCaption() {
             if (!this.imageBlob) {
-                alert('请先选择一张风景图片');
+                alert("请上传图片");
                 return;
             }
-
             this.loading = true;
-            this.result = { scene: '', caption: '' };
-
-            const formData = new FormData();
-            formData.append('file', this.imageBlob, 'scene.jpg');
-            formData.append('style', this.selectedStyle);
+            let fd = new FormData();
+            fd.append('file', this.imageBlob);
+            fd.append('style', this.selectedStyle);
 
             try {
-                const response = await fetch('/predict', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (!response.ok) {
-                    throw new Error('服务器响应错误');
-                }
-
-                const data = await response.json();
+                let res = await fetch('/predict', { method: 'POST', body: fd });
+                let data = await res.json();
                 this.result = data;
-            } catch (error) {
-                alert('生成失败：' + error.message);
-            } finally {
-                this.loading = false;
+                this.saveHistory();
+            } catch (err) {
+                alert("生成失败");
             }
-        }
-    },
-    // 组件销毁时释放资源
-    beforeUnmount() {
-        if (this.previewUrl) {
-            URL.revokeObjectURL(this.previewUrl);
+            this.loading = false;
+        },
+
+        copyCaption() {
+            navigator.clipboard.writeText(this.result.caption);
+            this.copyBtnText = "✅ 已复制";
+            setTimeout(() => this.copyBtnText = "复制文案", 1500);
+        },
+
+        saveHistory() {
+            let item = {
+                imgPath: this.result.imgPath,
+                scene: this.result.scene,
+                caption: this.result.caption,
+                style: this.selectedStyle,
+                time: new Date().toLocaleString()
+            };
+            let list = JSON.parse(localStorage.getItem('history') || '[]');
+            list.unshift(item);
+            if (list.length > 10) list = list.slice(0, 10);
+            this.historyList = list;
+            localStorage.setItem('history', JSON.stringify(list));
+        },
+
+        loadHistoryFromLocal() {
+            this.historyList = JSON.parse(localStorage.getItem('history') || '[]');
+        },
+
+        loadHistory(item) {
+            this.previewUrl = item.imgPath;
+            this.result.scene = item.scene;
+            this.result.caption = item.caption;
+            this.result.imgPath = item.imgPath;
+            this.selectedStyle = item.style;
+        },
+
+        reGenerate(item) {
+            this.loadHistory(item);
+            this.generateCaption();
         }
     }
 }).mount('#app');
