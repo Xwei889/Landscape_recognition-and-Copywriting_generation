@@ -27,3 +27,10 @@ OLLAMA_MODEL = "qwen2.5:7b"
 DEFAULT_MODE = "clip"
 
 SECRET_KEY = "123456"
+
+# MySQL 数据库配置
+MYSQL_HOST = "localhost"
+MYSQL_PORT = 3306
+MYSQL_USER = "root"
+MYSQL_PASSWORD = "xu87365333"
+MYSQL_DB = "landscape_db"
