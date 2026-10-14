@@ -1,0 +1,14 @@
+# Qwen2.5-7B-Instruct 导入配置（从 ModelScope 下载的 GGUF 分卷导入）
+FROM ./gguf_temp
+
+TEMPLATE """{{- if .Suffix }}<|fim_prefix|>{{ .Prompt }}<|fim_suffix|>{{ .Suffix }}<|fim_middle|>{{- else }}{{- if .Messages }}{{- if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{- end }}{{- range .Messages }}<|im_start|>{{ .Role }}
+{{ .Content }}<|im_end|>
+{{- end }}<|im_start|>assistant
+{{- else }}{{- if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{- end }}{{ .Prompt }}{{- end }}{{- end }}"""
+
+PARAMETER stop "<|im_start|>"
+PARAMETER stop "<|im_end|>"

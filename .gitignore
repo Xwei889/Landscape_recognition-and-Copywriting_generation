@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 大模型文件（超过 GitHub 100MB 限制，需另行下载）
+model/*.pt
+model/*.pth
+model/blobs/
+model/gguf_temp/
+model/manifests/
+
+# 用户上传的图片
+static/uploads/
+
+# 系统/IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# 日志和临时文件
+*.log
+flask_*.txt
+error_log.txt

@@ -1,0 +1,137 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>识景文案 | 风景场景识别与文案生成系统</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div id="app">
+    <!-- 顶部导航 -->
+    <div class="top-nav">
+        <div class="nav-logo">识景文案 //</div>
+        <div class="nav-menu">
+            <div class="nav-item" :class="{active: activeTab=='home'}" @click="activeTab='home'">首页</div>
+            <div class="nav-item" :class="{active: activeTab=='author'}" @click="activeTab='author'">作者</div>
+            <div class="nav-item" :class="{active: activeTab=='about'}" @click="activeTab='about'">系统</div>
+        </div>
+    </div>
+
+    <!-- 历史记录侧边栏（一直显示） -->
+    <div class="history-sidebar">
+        <h3 class="history-title">// 最近生成记录</h3>
+        <div v-if="historyList.length === 0" class="history-empty">
+            暂无生成记录<br><br>上传图片生成文案后<br>会显示在这里
+        </div>
+        <div v-for="item in historyList" class="history-item" @click="loadHistory(item)">
+            <img :src="item.imgPath" class="history-img">
+            <div class="history-scene">[[ item.scene ]]</div>
+            <div class="history-style">[[ item.style ]]</div>
+            <div class="history-caption">[[ item.caption ]]</div>
+            <div class="history-time">[[ item.time ]]</div>
+        </div>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="main-content">
+        <div class="content-card">
+            <!-- 首页 -->
+            <div v-if="activeTab=='home'">
+                <h1 class="page-title">风景场景识别与文案生成</h1>
+                <div class="two-column">
+                    <!-- 左侧上传 -->
+                    <div class="col">
+                        <div class="upload-section">
+                            <label class="form-label">[ 1 ] 选择风景图片</label>
+                            <input type="file" @change="handleFileChange" class="file-input">
+                            <img v-if="previewUrl" :src="previewUrl" class="image-preview">
+                        </div>
+
+                        <div class="upload-section">
+                            <label class="form-label">[ 2 ] 推荐风格（点击选用）</label>
+                            <div style="display:flex; flex-wrap:wrap; gap:12px; margin-top:12px;">
+                                <span v-for="s in recommendStyles" @click="selectStyle(s)"
+                                    class="style-tag"
+                                    :class="{active: selectedInstruction === s}"
+                                    :style="{ background: styleColors[s] || '#fff' }">
+                                    [[ s ]]
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="upload-section">
+                            <label class="form-label">[ 3 ] 自定义要求（可选）</label>
+                            <input type="text" v-model="customInstruction" class="form-input"
+                                style="margin-top:8px;" placeholder="如：短一点、带点幽默、适合小红书">
+                        </div>
+
+                        <button @click="generateCaption"
+                                :disabled="loading || !currentFile"
+                                class="submit-btn">
+                            [[ loading ? '>> 正在生成...' : '>> 上传并生成文案' ]]
+                        </button>
+                    </div>
+
+                    <!-- 右侧结果 -->
+                    <div class="col">
+                        <div v-if="result.scene" class="result-card">
+                            <div class="result-title">// 识别结果</div>
+                            <div class="result-item">场景：[[ result.scene ]]</div>
+                            <div class="result-caption">"[[ result.caption ]]"</div>
+                            <button @click="copyCaption" class="submit-btn" style="margin-top:15px; padding:12px; font-size:14px;">
+                                [[ copyBtnText ]]
+                            </button>
+                        </div>
+                        <div v-else class="empty-box">
+                            <div style="font-size:40px;">[ X ]</div>
+                            <div>上传图片后结果将在这里显示</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 作者介绍 -->
+            <div v-if="activeTab=='author'" style="padding:20px;">
+                <h1 class="page-title">作者介绍</h1>
+                <div class="author-card" style="max-width:600px; margin:0 auto;">
+                    <div class="author-avatar">徐</div>
+                    <div class="author-info" style="text-align:left;">
+                        <h2>徐佳伟</h2>
+                        <p>闽江学院 · 人工智能专业</p>
+                        <p>毕业设计：基于图文多模态融合的风景场景识别与文案生成系统设计与实现</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 系统说明 -->
+            <div v-if="activeTab=='about'" style="padding:20px;">
+                <h1 class="page-title">系统功能说明</h1>
+                <div class="info-section">
+                    <h3>>> 核心功能</h3>
+                    <ul>
+                        <li>本地图片上传与实时预览</li>
+                        <li>基于 CLIP 多模态对齐的风景场景智能分类识别</li>
+                        <li>基于本地大语言模型（Qwen2.5-7B）的智能文案生成</li>
+                        <li>多种推荐风格一键选用 + 自定义要求灵活调整</li>
+                        <li>生成文案一键复制，快速分享</li>
+                    </ul>
+                </div>
+                <div class="info-section">
+                    <h3>>> 技术架构</h3>
+                    <ul>
+                        <li>视觉模块：OpenAI CLIP ViT-B/32 零样本分类</li>
+                        <li>语言模块：Ollama 本地部署 Qwen2.5-7B 大语言模型</li>
+                        <li>后端：Flask + Python</li>
+                        <li>前端：Vue 3 + 新野兽派设计风格</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>

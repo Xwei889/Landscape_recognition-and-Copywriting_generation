@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.venv
+data/
+model/（如果模型文件很大，不想打包进镜像可以写这里）
+.git
+.DS_Store
